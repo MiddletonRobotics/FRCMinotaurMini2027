@@ -1,17 +1,20 @@
 package first.robot.Subsystems.Drivetrain;
 
 import org.littletonrobotics.junction.AutoLog;
+import org.wpilib.math.geometry.Pose2d;
 import org.wpilib.math.geometry.Rotation2d;
 
 import com.ctre.phoenix6.swerve.SwerveDrivetrain.SwerveDriveState;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 
+import first.minolib.vision.FieldPoseEstimate;
+
 public interface DrivetrainIO {
     @AutoLog
 
     public class DrivetrainIOInputs extends SwerveDriveState {
-        public double yawVelocityRadiansPerSecond = 0.0;
-        public double yawAccelerationRadiansPerSecond = 0.0;
+        public double yawVelocity = 0.0;
+        public double yawAcceleration = 0.0;
 
         public double[] steerRates = new double[4];
 
@@ -51,11 +54,23 @@ public interface DrivetrainIO {
         public double steerTemperatureCelsius = 0.0;
     }
 
-
+    /** Updates the inputs for the drivetrain */
     public void updateInputs(DrivetrainIOInputs drivetrainInputs, ModuleIOInputs... moduleInputs);
 
+    /** Logs the state of the drivetrain modules for debugging */
     public void logModules(SwerveDriveState state);
 
-    /** Sends a swerve request (field-centric drive, robot velocity, brake, etc.) to the drivetrain. */
-    public void setSwerveRequest(SwerveRequest request);
+    /** Applies commanded module states to the drivetrain */
+    public default void setSwerveRequest(SwerveRequest request) {}
+
+     /** Resets the drivetrain pose to a specific pose */
+    public void resetPose(Pose2d pose);
+
+    /** Resets the drivetrain rotation to Rotation2d.ZERO (forward) */
+    public default void resetRotation() {}
+
+    /** Resets the drivetrain rotation to a specific rotation */
+    public default void resetToParameterizedRotation(Rotation2d rotation) {}
+
+    public void addVisionMeasurement(FieldPoseEstimate poseEstimate);
 }

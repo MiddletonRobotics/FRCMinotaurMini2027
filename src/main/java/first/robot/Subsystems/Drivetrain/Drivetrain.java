@@ -92,10 +92,12 @@ public class Drivetrain implements Mechanism {
         io.updateInputs(inputs, moduleInputs);
         io.logModules(inputs);
 
-        for(int i = 0; i < moduleInputs.length; i++ ) {
-            Logger.processInputs("drivetrain", inputs);
-            LoggedTracer.record("DrivetrainPeriodic");
+        for (int i = 0; i < moduleInputs.length; i++) {
+            Logger.processInputs(moduleNames[i], moduleInputs[i]);
         }
+
+        Logger.processInputs("Drivetrain", inputs);
+        LoggedTracer.record("DrivetrainPeriodic");
     }
 
     

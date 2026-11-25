@@ -6,11 +6,14 @@ import org.littletonrobotics.junction.networktables.NT4Publisher;
 import org.littletonrobotics.junction.wpilog.WPILOGWriter;
 import org.wpilib.command3.Scheduler;
 import org.wpilib.command3.button.CommandGamepad;
+import org.wpilib.math.geometry.Pose2d;
 
 import com.ctre.phoenix6.swerve.SwerveDrivetrain.SwerveDriveState;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 
 import first.minolib.advantagekit.LoggedTracer;
+import first.minolib.utilities.PhoenixUtility;
+import first.minolib.vision.FieldPoseEstimate;
 import first.robot.Subsystems.Drivetrain.Drivetrain;
 import first.robot.Subsystems.Drivetrain.DrivetrainIO;
 
@@ -47,6 +50,12 @@ public class Robot extends LoggedOpModeRobot {
 
             @Override
             public void setSwerveRequest(SwerveRequest request) {}
+
+            @Override
+            public void resetPose(Pose2d pose) {}
+
+            @Override
+            public void addVisionMeasurement(FieldPoseEstimate poseEstimate) {}
         };
         drivetrain = new Drivetrain(robotState, drivetrainIO);
 
@@ -61,6 +70,9 @@ public class Robot extends LoggedOpModeRobot {
     @Override
     public void robotPeriodic() {
         LoggedTracer.reset();
+
+        PhoenixUtility.refreshAll();
+        LoggedTracer.record("PhoenixRefresh");
 
         drivetrain.periodic();
 
