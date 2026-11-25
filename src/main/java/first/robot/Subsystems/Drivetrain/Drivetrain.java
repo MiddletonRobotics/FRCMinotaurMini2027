@@ -6,9 +6,7 @@ import java.util.function.Supplier;
 
 import org.littletonrobotics.junction.Logger;
 import org.wpilib.command3.Command;
-import org.wpilib.command3.Coroutine;
 import org.wpilib.command3.Mechanism;
-import org.wpilib.driverstation.DriverStation;
 import org.wpilib.driverstation.MatchState;
 import org.wpilib.math.controller.ProfiledPIDController;
 import org.wpilib.math.geometry.Pose2d;
@@ -70,7 +68,6 @@ public class Drivetrain implements Mechanism {
         .withDriveRequestType(SwerveModule.DriveRequestType.OpenLoopVoltage)
         .withSteerRequestType(SwerveModule.SteerRequestType.MotionMagicExpo);
 
-    // ---- DriveToPose tuning (dashboard-tunable; defaults come from DrivetrainConstants) ----
     private static final LoggedTunableNumber driveToPoseTranslationkP = new LoggedTunableNumber("Drivetrain/DriveToPose/Translation/kP", DrivetrainConstants.kTranslationDriveToPosekP);
     private static final LoggedTunableNumber driveToPoseTranslationkI = new LoggedTunableNumber("Drivetrain/DriveToPose/Translation/kI", DrivetrainConstants.kTranslationDriveToPosekI);
     private static final LoggedTunableNumber driveToPoseTranslationkD = new LoggedTunableNumber("Drivetrain/DriveToPose/Translation/kD", DrivetrainConstants.kTranslationDriveToPosekD);
@@ -132,13 +129,9 @@ public class Drivetrain implements Mechanism {
         return driveToPose(() -> target);
     }
 
-    /**
-     * Drives to a target pose using two profiled PID controllers: one for distance to the target and
-     * one for heading. Ends when the robot is within tolerance of the target's X/Y.
-     */
+    
     public Command driveToPose(Supplier<Pose2d> targetSupplier) {
         return run(coroutine -> {
-            // ===== Setup (was initialize() in 2026) =====
             ProfiledPIDController translationController = new ProfiledPIDController(
                 driveToPoseTranslationkP.get(),
                 driveToPoseTranslationkI.get(),
@@ -161,13 +154,10 @@ public class Drivetrain implements Mechanism {
 
             rotationController.enableContinuousInput(-Math.PI, Math.PI);
 
-            // Start both profiles from where the robot is and how fast it's already moving,
-            // so the robot doesn't jerk when the command starts.
             Pose2d startPose = robotState.getLatestFieldToRobot().getValue();
             ChassisVelocities startVelocities = robotState.getLatestMeasuredFieldRelativeChassisVelocities();
 
             Translation2d startError = targetSupplier.get().minus(startPose).getTranslation();
-            // 2027: getAngle() returns Optional (empty if the robot is exactly on the target)
             Rotation2d startDirection = startError.getAngle().orElse(Rotation2d.ZERO);
 
             double velocityTowardTarget = startVelocities.vx * startDirection.getCos() + startVelocities.vy * startDirection.getSin();
@@ -175,7 +165,6 @@ public class Drivetrain implements Mechanism {
             translationController.reset(startError.getNorm(), -velocityTowardTarget);
             rotationController.reset(startPose.getRotation().getRadians(), startVelocities.omega);
 
-            // ===== Loop (was execute() + isFinished() in 2026) =====
             while (!isAtPose(targetSupplier.get())) {
                 // Pick up gain changes made on the dashboard
                 if (driveToPoseTranslationkP.hasChanged(hashCode()) || driveToPoseTranslationkI.hasChanged(hashCode()) || driveToPoseTranslationkD.hasChanged(hashCode())) {
@@ -197,15 +186,12 @@ public class Drivetrain implements Mechanism {
                 Translation2d translationError = targetPose.minus(currentPose).getTranslation();
                 Rotation2d directionToTarget = translationError.getAngle().orElse(Rotation2d.ZERO);
 
-                // Translation PID drives the remaining distance to 0
                 double translationOutput = translationController.calculate(translationError.getNorm(), 0.0);
-                // Rotation PID drives the heading to the target heading
                 double rotationOutput = rotationController.calculate(
                     currentPose.getRotation().getRadians(),
                     targetPose.getRotation().getRadians()
                 );
 
-                // Turn "speed toward target" + "direction to target" into an X/Y velocity
                 Translation2d translationVelocity = new Translation2d(-translationOutput, directionToTarget);
 
                 applyRequest(robotVelocityRequest.withVelocity(
@@ -218,15 +204,13 @@ public class Drivetrain implements Mechanism {
                 Logger.recordOutput("DriveToPose/Translation Error", translationError.getNorm());
                 Logger.recordOutput("DriveToPose/Rotation Error", targetPose.getRotation().minus(currentPose.getRotation()).getRadians());
 
-                coroutine.yield(); // wait for the next robot loop
+                coroutine.yield(); 
             }
         })
-        // ===== End (was end() in 2026) =====
         .whenExited(this::stop)
         .named("Drivetrain.DriveToPose");
     }
 
-    /** True when the robot is within tolerance of the target's X and Y (same check as 2026's isFinished). */
     private boolean isAtPose(Pose2d target) {
         Pose2d current = robotState.getLatestFieldToRobot().getValue();
         double tolerance = Units.inchesToMeters(0.5);
